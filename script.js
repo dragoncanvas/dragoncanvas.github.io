@@ -30,11 +30,14 @@ function draw(withAnchors, withBorders) {
     }
 
     if (withBorders && activeImage === index) {
+      ctx.lineWidth = 20; // Set the border width to 20px
+      ctx.strokeStyle = 'white'; // Set the border color to white
+      
       ctx.beginPath();
-      ctx.moveTo(imgObj.x, imgObj.y);
-      ctx.lineTo(imgObj.right, imgObj.y);
-      ctx.lineTo(imgObj.right, imgObj.bottom);
-      ctx.lineTo(imgObj.x, imgObj.bottom);
+      ctx.moveTo(imgObj.x - 10, imgObj.y - 10); // Offset by 10px for border width
+      ctx.lineTo(imgObj.right + 10, imgObj.y - 10); // Offset by 10px for border width
+      ctx.lineTo(imgObj.right + 10, imgObj.bottom + 10); // Offset by 10px for border width
+      ctx.lineTo(imgObj.x - 10, imgObj.bottom + 10); // Offset by 10px for border width
       ctx.closePath();
       ctx.stroke();
     }
