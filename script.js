@@ -20,7 +20,7 @@ function draw(withAnchors, withBorders) {
     ctx.drawImage(imgObj.img, 0, 0, imgObj.img.width, imgObj.img.height, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
 
     if (withAnchors && activeImage === index) {
-     drawDragAnchor(imgObj.x, imgObj.y, 'rgba(0, 0, 0, 0.1)'); // Top-left
+      drawDragAnchor(imgObj.x, imgObj.y, 'rgba(0, 0, 0, 0.1)'); // Top-left
       drawDragAnchor(imgObj.right, imgObj.y, 'rgba(0, 0, 0, 0.1)'); // Top-right
       drawDragAnchor(imgObj.right, imgObj.bottom, 'rgba(0, 0, 0, 1)'); // Bottom-right
       drawDragAnchor(imgObj.x, imgObj.bottom, 'rgba(0, 0, 0, 0.1)'); // Bottom-left

@@ -5,14 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Drag On Canvas</title>
   <link rel='shortcut icon' href='https://easycss.github.io/favicon/favicon.png' type='image/x-icon' />
-  <link rel='stylesheet' href='style.css' />
+  <script src='tailwindcss.min.js'></script>
+<style>
+  
+  *{
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  canvas { width: 100vw; height: 100vh; }
+  img { cursor: drag; }
+
+</style>
 </head>
 <body>
+
+<div class="flex w-full justify-between">
   <input type="file" id="imageLoader" accept="image/*" multiple/>
-  <canvas id="canvas">
+</div>
 
-  </canvas>
 
-  <script src="script.js"></script>
+<canvas id="canvas"></canvas>
+
+
+<script src="script.js"></script>
 </body>
 </html>
