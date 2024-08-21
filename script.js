@@ -238,20 +238,33 @@ function handleMouseMove(e) {
   }
 }
 
+// Load images and resize to fit within 200px height
 document.getElementById('imageLoader').addEventListener('change', function (e) {
   Array.from(e.target.files).forEach(file => {
-    var reader = new FileReader();
+    const reader = new FileReader();
     reader.onload = function (event) {
-      var img = new Image();
+      const img = new Image();
       img.onload = function () {
+        let maxHeight = 300;
+        let aspectRatio = img.width / img.height;
+        let width, height;
+
+        if (img.height > maxHeight) {
+          height = maxHeight;
+          width = maxHeight * aspectRatio;
+        } else {
+          height = img.height;
+          width = img.width;
+        }
+
         let imgObj = {
           img: img,
           x: 50,
           y: 50,
-          width: img.width,
-          height: img.height,
-          right: 50 + img.width,
-          bottom: 50 + img.height
+          width: width,
+          height: height,
+          right: 50 + width,
+          bottom: 50 + height
         };
         images.push(imgObj);
         draw(true, false);
