@@ -20,13 +20,14 @@ function draw(withAnchors, withBorders) {
     ctx.drawImage(imgObj.img, 0, 0, imgObj.img.width, imgObj.img.height, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
 
     if (withAnchors && activeImage === index) {
-      drawDragAnchorMuted(imgObj.x, imgObj.y, 'rgba(0, 0, 0, 0.1)'); // Top-left
+      // Adjusted for the 20px border
+      drawDragAnchorMuted(imgObj.x - 10, imgObj.y - 10, 'rgba(0, 0, 0, 0.1)'); // Top-left
 
-      drawDeleteButton(imgObj.right - 10, imgObj.y + 10, 'rgba(255, 0, 0, 1)'); // Top-right (Delete button)
+      drawDeleteButton(imgObj.right + 30, imgObj.y - 30, 'rgba(255, 0, 0, 1)'); // Top-right (Delete button)
 
-      drawDragAnchor(imgObj.right, imgObj.bottom, 'rgba(0, 0, 0, 1)'); // Bottom-right
+     drawDragAnchor(imgObj.right + 10, imgObj.bottom + 10, 'rgba(0, 0, 0, 1)'); // Bottom-right
 
-      drawDragAnchorMuted(imgObj.x, imgObj.bottom, 'rgba(0, 0, 0, 0.1)'); // Bottom-left
+      drawDragAnchorMuted(imgObj.x - 10, imgObj.bottom + 10, 'rgba(0, 0, 0, 0.1)'); // Bottom-left
     }
 
     if (withBorders && activeImage === index) {
@@ -80,24 +81,25 @@ function anchorHitTest(x, y) {
     let dx, dy;
 
     // Check for delete button hit test
-    dx = x - (imgObj.right - 10);
-    dy = y - (imgObj.y + 10);
+    dx = x - (imgObj.right + 30); // Adjust for 20px border and 10px extra offset
+    dy = y - (imgObj.y - 30);     // Adjust for 20px border and 10px extra offset
     if (dx * dx + dy * dy <= 100) return { index: i, anchor: 4 };
 
-    dx = x - imgObj.x;
-    dy = y - imgObj.y;
+    // Adjust for border width (20px)
+    dx = x - (imgObj.x - 10);
+    dy = y - (imgObj.y - 10);
     if (dx * dx + dy * dy <= 64) return { index: i, anchor: 0 };
 
-    dx = x - imgObj.right;
-    dy = y - imgObj.y;
+    dx = x - (imgObj.right + 10);
+    dy = y - (imgObj.y - 10);
     if (dx * dx + dy * dy <= 64) return { index: i, anchor: 1 };
 
-    dx = x - imgObj.right;
-    dy = y - imgObj.bottom;
+    dx = x - (imgObj.right + 10);
+    dy = y - (imgObj.bottom + 10);
     if (dx * dx + dy * dy <= 64) return { index: i, anchor: 2 };
 
-    dx = x - imgObj.x;
-    dy = y - imgObj.bottom;
+    dx = x - (imgObj.x - 10);
+    dy = y - (imgObj.bottom + 10);
     if (dx * dx + dy * dy <= 64) return { index: i, anchor: 3 };
   }
 
