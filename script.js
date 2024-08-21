@@ -249,7 +249,7 @@ function handleMouseMove(e) {
   }
 }
 
-// Load images and resize to fit within 200px height
+// Load images and resize to fit within 300px height, scattered randomly
 document.getElementById('imageLoader').addEventListener('change', function (e) {
   Array.from(e.target.files).forEach(file => {
     const reader = new FileReader();
@@ -268,14 +268,18 @@ document.getElementById('imageLoader').addEventListener('change', function (e) {
           width = img.width;
         }
 
+        // Generate random x and y positions, within 300px from top or left of the viewport
+        let x = Math.random() * 300;
+        let y = Math.random() * 300;
+
         let imgObj = {
           img: img,
-          x: 50,
-          y: 50,
+          x: x,
+          y: y,
           width: width,
           height: height,
-          right: 50 + width,
-          bottom: 50 + height
+          right: x + width,
+          bottom: y + height
         };
         images.push(imgObj);
         draw(true, false);
@@ -285,6 +289,7 @@ document.getElementById('imageLoader').addEventListener('change', function (e) {
     reader.readAsDataURL(file);
   });
 });
+
 
 canvas.addEventListener("mousedown", handleMouseDown);
 canvas.addEventListener("mousemove", handleMouseMove);
