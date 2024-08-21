@@ -132,6 +132,11 @@ function handleMouseDown(e) {
     draggingImage = hitImage(startX, startY);
     if (draggingImage !== -1) {
       activeImage = draggingImage; // Set the clicked image as active
+      
+      // Bring the clicked image to the front
+      let imgObj = images.splice(draggingImage, 1)[0];
+      images.push(imgObj);
+
       draw(true, true);
     } else {
       activeImage = -1; // Deselect any active image if the canvas or an empty area is clicked
@@ -141,6 +146,7 @@ function handleMouseDown(e) {
     draw(true, true); // Ensure the canvas is redrawn with active image
   }
 }
+
 
 function handleMouseUp() {
   draggingResizer = -1;

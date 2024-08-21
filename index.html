@@ -13,15 +13,23 @@
     padding: 0;
     overflow: hidden;
   }
-  canvas { width: 100vw; height: 100vh; }
+  canvas { width: 100vw; height: 100vh; background: #000;}
   img { cursor: drag; }
 
 </style>
 </head>
 <body>
 
-<div class="flex w-full justify-between">
-  <input type="file" id="imageLoader" accept="image/*" multiple/>
+<div class="flex w-full">
+  <div class="p-0 flex">
+    <label for="imageLoader" class="ml-1 -mr-3 block text-sm text-gray-700">Upload Images</label>
+    <input
+      type="file"
+      id="imageLoader"
+      accept="image/*"
+      multiple
+      class="mt-2 h-6 block w-full text-sm text-gray-900 rounded-md cursor-pointer focus:outline-none focus:ring-0 focus:border-none focus:bg-green-400" />
+  </div>
 </div>
 
 
