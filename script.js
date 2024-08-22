@@ -7,6 +7,56 @@ var draggingResizer = -1, draggingImage = -1;
 var activeImage = -1;  // Track the active (selected) image
 var startX, startY;
 
+function wrapText(context, text, x, y, maxWidth, lineHeight) {
+  const lines = text.split('\n'); // Split the text by newline character
+
+  lines.forEach(line => {
+    let words = line.split(' ');
+    let currentLine = '';
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = currentLine + words[n] + ' ';
+      const metrics = context.measureText(testLine);
+      const testWidth = metrics.width;
+
+      if (testWidth > maxWidth && n > 0) {
+        context.fillText(currentLine, x, y);
+        currentLine = words[n] + ' ';
+        y += lineHeight;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    context.fillText(currentLine, x, y);
+    y += lineHeight; // Move to the next line
+  });
+}
+
+
+function drawInstructions() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+  // Set the font and alignment for the instruction text
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "gray";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Set maximum width for each line and line height
+  const maxWidth = canvas.width * 0.9; // 80% of the canvas width
+  const lineHeight = 38; // Adjust the space between lines
+
+  // Instruction text with manual line breaks
+  const text = "DragON Canvas \n\nClick 'Browse' to load an image.\nClick image to bring forward.\nClick image again to drag it.\nResize using border corners. \nPage reload removes all images.";
+
+  // Calculate the starting y position to center the text block vertically
+  const y = canvas.height / 3 - (lineHeight * 1.5);
+
+  // Draw the wrapped text with line breaks
+  wrapText(ctx, text, canvas.width / 2, y, maxWidth, lineHeight);
+}
+
+
 function updateCanvasOffset() {
   const rect = canvas.getBoundingClientRect();
   offsetX = rect.left;
@@ -16,6 +66,11 @@ function updateCanvasOffset() {
 function draw(withAnchors, withBorders) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  if (images.length === 0) {
+    drawInstructions(); // Draw the instructions if no images are loaded
+    return; // Exit the function since there's nothing else to draw
+  }
+  
   images.forEach((imgObj, index) => {
     ctx.drawImage(imgObj.img, 0, 0, imgObj.img.width, imgObj.img.height, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
 
