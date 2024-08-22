@@ -47,7 +47,7 @@ function drawInstructions() {
   const lineHeight = 38; // Adjust the space between lines
 
   // Instruction text with manual line breaks
-  const text = "DragON Canvas \n\nClick 'Browse' to load an image.\nClick image to bring forward.\nClick image again to drag it.\nResize using border corners. \nPage reload removes all images.";
+  const text = "DragON Canvas \n\nUpload images with button (top left).\nClick image to bring forward.\nClick image again to drag it.\nResize using border corners. \nPage reload removes all images.";
 
   // Calculate the starting y position to center the text block vertically
   const y = canvas.height / 3 - (lineHeight * 1.5);
