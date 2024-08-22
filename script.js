@@ -133,24 +133,29 @@ function handleMouseDown(e) {
       activeImage = -1;
       draw(true, false); // Redraw the canvas without the deleted image
     }
-  } else if (draggingImage === -1) {
-    draggingImage = hitImage(startX, startY);
+  } else {
+    if (draggingImage === -1) {
+      draggingImage = hitImage(startX, startY);
+    }
+
     if (draggingImage !== -1) {
       activeImage = draggingImage; // Set the clicked image as active
-      
+
       // Bring the clicked image to the front
       let imgObj = images.splice(draggingImage, 1)[0];
       images.push(imgObj);
 
-      draw(true, true);
+      // Update activeImage to the new index of the moved image (last in array)
+      activeImage = images.length - 1;
+
+      draw(true, true); // Redraw the canvas with the new active image at the front
     } else {
       activeImage = -1; // Deselect any active image if the canvas or an empty area is clicked
       draw(false, false);
     }
-  } else {
-    draw(true, true); // Ensure the canvas is redrawn with active image
   }
 }
+
 
 
 function handleMouseUp() {
