@@ -40,7 +40,7 @@ function drawInstructions() {
   ctx.font = "24px Arial";
   ctx.fillStyle = "gray";
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+  // ctx.textBaseline = "middle";
 
   // Set maximum width for each line and line height
   const maxWidth = canvas.width * 0.9; // 80% of the canvas width
@@ -50,7 +50,7 @@ function drawInstructions() {
   const text = "DragON Canvas \n\nUpload images with button (top left).\nDOUBLE-CLICK image to make active. \nDrag and position. \nResize using border corners. \nPage reload removes all images. \nNo data is stored.";
 
   // Calculate the starting y position to center the text block vertically
-  const y = canvas.height / 3 - (lineHeight * 1.5);
+  const y = canvas.height / 3 - (lineHeight * 3);
 
   // Draw the wrapped text with line breaks
   wrapText(ctx, text, canvas.width / 2, y, maxWidth, lineHeight);
