@@ -4,19 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DragON Canvas</title>
-  <link rel='shortcut icon' href='https://easycss.github.io/favicon/favicon.png' type='image/x-icon' />
+  <link rel='shortcut icon' href='images/dragon.jpg' type='image/x-icon' />
   <script src='tailwindcss.min.js'></script>
 <style>
   
-  *{
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-  canvas { width: 100vw; height: 100vh; background: #000;}
+  * { margin: 0; padding: 0; overflow: hidden; }
+  canvas { width: 100vw; height: 100vh; background: #312a26;}
   img { cursor: drag; }
 
-    .socials{
+      .socials{
       display: flex;
       justify-content: center;
       margin: 8px;
@@ -32,14 +28,14 @@
       filter: invert(.1);
     }
 
-    #spotify{
+      #spotify{
       width: 100px;
       margin-top: -2px;
-      filter: invert(.1);
+      filter: invert(1);
     }
 
     #spotify:hover{
-      filter: invert(1);
+      filter: invert(0);
     }
   
 
@@ -47,9 +43,10 @@
 </head>
 <body>
 
-<div class="flex w-full justify-between">
+<div class="flex w-full justify-between items-center">
+
   <div class="flex">
-  <img class="opacity-30 w-14 mr-1 transform -scale-x-100" src="dragon.jpg" alt="dragon from flaticon">
+    <img class="opacity-30 w-14 mr-1" src="images/dragon.jpg" alt="dragon from flaticon">
     <label for="imageLoader" class="max-w-2 leading-tight my-1.5 ml-1 -mr-3 text-sm text-[#f7f7f7]">Upload Images</label>
     <input
       type="file"
@@ -59,25 +56,33 @@
       class="max-w-[150px] mt-3 h-6 block w-full text-sm text-gray-900 rounded-md cursor-pointer focus:outline-none focus:ring-0 focus:border-none focus:bg-green-400" />
   </div>
 
+<!--  -->
+<div>
 
-<div><h1 class="hidden lg:block text-2xl mt-2.5 text-white bg-black px-2">DOUBLE CLICK IMAGES TO SELECT AND MOVE</h1></div>
-    
+<div id="theme">
+  <img id="lightIcon" class="h-8 icon" src="images/moon.svg">
+  <img id="darkIcon" class="h-8 icon hidden" src="images/sun.svg">
+</div>
+
+</div>
+<!--  -->
+
       <div class="socials">
       
-      <a href="https://github.com/dragoncanvas" target="_blank">
+      <a href="https://github.com/dragoncanvas/dragoncanvas.github.io/issues" target="_blank">
         <img src="https://raw.githubusercontent.com/mattheweq/icons-repo/main/github.svg">
       </a>
 
       <a href="https://open.spotify.com/artist/66OsKKYin7yLMQUsZxjE91" target="_blank">
-        <img  id="spotify" src="https://raw.githubusercontent.com/mattheweq/icons-repo/main/mvm-stamp.jpg">
+        <img id="spotify" src="https://raw.githubusercontent.com/mattheweq/icons-repo/main/mvm-stamp.jpg">
       </a>
 
       <a href="mailto:mattheweq8@gmail.com">
         <img src="https://raw.githubusercontent.com/mattheweq/icons-repo/main/email.svg">
       </a>
     </div>
-  
 
+<!--  -->
 </div>
 
 
