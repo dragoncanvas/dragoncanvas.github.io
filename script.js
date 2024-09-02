@@ -98,7 +98,7 @@ function drawInstructions() {
   const lineHeight = 38; // Adjust the space between lines
 
   // Instruction text with manual line breaks
-  const text = "DragON Canvas \n\nDrag images directly onto the canvas. \nOr use button (top left) to load them.\nHighlight file names and press open. \nYou can load multiple images at once. \n\nResize images using the red borders. \nDrag and position images. \n\nPage reload removes all images. \nNo data is shared or stored.";
+  const text = "DragON Canvas \n\nDrag images directly onto the canvas. \nOr use button (top left) to load them.\nHighlight file names and press open. \nYou can load multiple images at once. \n\nResize images using the red borders. \nDrag and position images. \n\nPage reload removes all images. \nNo data is shared or stored. \n\nIf you like this app you can support us \nby playing: Matthew via Music on Spotify.";
 
   // Calculate the starting y position to center the text block vertically
   const y = canvas.height / 3 - (lineHeight * 3);
