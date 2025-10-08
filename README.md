@@ -4,7 +4,7 @@
 
 [LIVE SITE](https://dragoncanvas.github.io)
 
-![ALT:preview](preview.png)
-![ALT:preview](preview2.png)
+<!-- ![ALT:preview](preview.png) -->
+
 
 

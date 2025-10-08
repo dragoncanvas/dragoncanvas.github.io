@@ -1,15 +1,114 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+document.body.style.userSelect = 'none'; // disables text selection
+canvas.style.userSelect = 'none';        // more specific
+canvas.style.webkitUserDrag = 'none';    // prevents image dragging on Safari/Chrome
+
+let maxHeight = 500;
+let showHelp = false;
+let selectedImages = []; // array of selected image indices
+let shiftHeld = false;
+
+let lastResizeTime = 0;
+const resizeThrottle = 16;
+
+let offsetX, offsetY;
+let images = []; // Array to store multiple images
+let draggingResizer = -1;
+let draggingImage = -1;
+let activeImage = -1;  // Track the active (selected) image
+let startX, startY;
+
+let dragAll = false; // Toggle this when you want to drag all images
+let prevX = 0;
+let prevY = 0;
+
+let readyToDrag = false;
+let isDragging = false;
+let lastSelectedForDot = null;
+
+
+// CREATE RIGHT CLICK MENU
+canvas.addEventListener('contextmenu', function (e) {
+  e.preventDefault(); // Prevent the default context menu from showing
+
+  const mouseX = e.clientX - offsetX;
+  const mouseY = e.clientY - offsetY;
+
+  // Determine which image was clicked on (if any)
+  const clickedImageIndex = hitImage(mouseX, mouseY);
+  if (clickedImageIndex !== -1) {
+    activeImage = clickedImageIndex; // Set the clicked image as the active image
+
+    // Show the custom context menu (implement the function below)
+    showContextMenu(e.clientX, e.clientY, clickedImageIndex);
+  }
+});
+
+function showContextMenu(x, y, clickedImageIndex) {
+  const contextMenu = document.getElementById('contextMenu');
+  
+  // Get the menu dimensions
+  const menuWidth = contextMenu.offsetWidth;
+  const menuHeight = contextMenu.offsetHeight;
+
+  // Adjust position to avoid overflow
+  if (x + menuWidth > window.innerWidth) {
+    x = window.innerWidth - menuWidth;
+  }
+  if (y + menuHeight > window.innerHeight) {
+    y = window.innerHeight - menuHeight;
+  }
+
+  // Position the menu at the mouse click position
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
+  contextMenu.style.display = 'block';
+
+
+  document.getElementById('sendBackward').onclick = function () {
+    sendImageBackward(clickedImageIndex);
+    contextMenu.style.display = 'none'; // Hide the menu after action
+  };
+}
+
+// Hide the context menu when clicking anywhere else on the page
+document.addEventListener('click', function () {
+  document.getElementById('contextMenu').style.display = 'none';
+});
+
+
+// Send the image to the back (i.e., bottom of the stack)
+function sendImageBackward(index) {
+  if (index > 0) {
+    // Remove the image from its current position
+    const imgObj = images.splice(index, 1)[0];
+
+    // Insert it at the beginning of the array (which will send it to the back in rendering order)
+    images.unshift(imgObj);
+
+    // Redraw the canvas with the new image order
+    draw(true);
+  }
+}
+
+
+// 
+// 
 const theme = document.getElementById('theme');
 
 const themes = {
   dark: {
-    color: "#202123", // Dark theme color
+    color: "#000000", // Dark theme color
+    // bg: "url('images/black-bg.jpg')", 
+    // Dark theme background image
     iconId: 'darkIcon' // ID of the dark theme icon
   },
   light: {
-    color: "#f9f4f1", // Light theme color
+    color: "#ffffff", // Light theme color
+    // bg: "url('images/white-bg.jpg')", 
+    // Light theme background image
     iconId: 'lightIcon' // ID of the light theme icon
   }
 };
@@ -23,89 +122,127 @@ function setThemeIcon(iconId) {
 
 // Initialize theme based on the currently visible icon
 function initializeTheme() {
-  // Default to dark theme
-  const defaultTheme = 'dark';
+  // Default to light theme
+  const defaultTheme = 'light';
 
-  // Set canvas background color and icon for the default theme
+  // Set canvas background color and image for the default theme
   canvas.style.backgroundColor = themes[defaultTheme].color;
+  canvas.style.backgroundImage = themes[defaultTheme].bg;
   setThemeIcon(themes[defaultTheme].iconId);
 }
 
 // Call initializeTheme to set up the initial theme
 initializeTheme();
 
+// Handle theme toggling
 theme.addEventListener("click", () => {
   // Find the currently visible icon
   const visibleIcon = document.querySelector('.icon:not(.hidden)');
+  
+  // Determine the current theme based on the visible icon
   const currentThemeKey = Object.keys(themes).find(themeKey => themes[themeKey].iconId === visibleIcon.id);
+  
+  // Toggle the theme (if dark, switch to light; if light, switch to dark)
   const newThemeKey = currentThemeKey === 'dark' ? 'light' : 'dark';
 
-  // Update the canvas background color and toggle the icons
+  // Update the canvas background color and image for the new theme
   canvas.style.backgroundColor = themes[newThemeKey].color;
+  canvas.style.backgroundImage = themes[newThemeKey].bg;
+
+  // Set the theme icon accordingly
   setThemeIcon(themes[newThemeKey].iconId);
 });
 
 
+
 // 
 // 
 // 
 // 
 // 
 
-var offsetX, offsetY;
-var images = []; // Array to store multiple images
-var draggingResizer = -1, draggingImage = -1;
-var activeImage = -1;  // Track the active (selected) image
-var startX, startY;
 
-function wrapText(context, text, x, y, maxWidth, lineHeight) {
-  const lines = text.split('\n'); // Split the text by newline character
+const helpTip = document.getElementById('helpTip');
 
-  lines.forEach(line => {
-    let words = line.split(' ');
-    let currentLine = '';
+const instructions = [
+  { text: "DragON Canvas\n", font: "bold 36px Arial", fillStyle: "#666" },
 
-    for (let n = 0; n < words.length; n++) {
-      const testLine = currentLine + words[n] + ' ';
-      const metrics = context.measureText(testLine);
-      const testWidth = metrics.width;
+  { text: "Drag image(s) from your desktop", fillStyle: "gray" },
+  { text: "or a folder, directly onto the canvas.", fillStyle: "gray" },
+  { text: "Alternatively use button (top left) to open finder.", fillStyle: "gray" },
+  { text: "YOU CAN LOAD MULTIPLE IMAGES AT ONCE\n", font: "bold 24px Arial", fillStyle: "#444" },
+  
+  { text: "Drag and position images.", font: "bold 24px Arial", fillStyle: "#555" },
 
-      if (testWidth > maxWidth && n > 0) {
-        context.fillText(currentLine, x, y);
-        currentLine = words[n] + ' ';
-        y += lineHeight;
-      } else {
-        currentLine = testLine;
+  { text: "Hold 'g' key and drag to DRAG ALL images together.", font: "bold 22px Arial", fillStyle: "#333" },
+
+  { text: "SHIFT CLICK images to drag as a group.\n", font: "bold 22px Arial", fillStyle: "#333" },
+
+  { text: "Resize using green dot (bottom right).", fillStyle: "gray" },
+  { text: "Use ↑ ↓ Arrow keys to rotate.", fillStyle: "#555" },
+  { text: "Backspace/Delete key to remove.\n", fillStyle: "gray" },
+  { text: "Right-click an image to send backwards in the stack.", fillStyle: "gray" },
+  { text: "Hover move over the 3 icons (top right) for usage tips.\n", font: "bold 24px Arial", fillStyle: "#888" },
+  { text: "App Quit/Restart removes all images from canvas.", fillStyle: "gray" },
+];
+
+function drawStyledText(context, styledLines, x, y, maxWidth, lineHeight) {
+  styledLines.forEach(({ text, font, fillStyle }) => {
+    const lines = text.split('\n');
+    context.font = font || "24px Arial";
+    context.fillStyle = fillStyle || "black";
+
+    lines.forEach(line => {
+      const words = line.split(' ');
+      let currentLine = '';
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = currentLine + words[n] + ' ';
+        const metrics = context.measureText(testLine);
+        const testWidth = metrics.width;
+
+        if (testWidth > maxWidth && n > 0) {
+          context.fillText(currentLine.trim(), x, y);
+          currentLine = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          currentLine = testLine;
+        }
       }
-    }
-    context.fillText(currentLine, x, y);
-    y += lineHeight; // Move to the next line
+      context.fillText(currentLine.trim(), x, y);
+      y += lineHeight;
+    });
   });
 }
 
+function drawHelpOverlay() {
+ctx.save();
 
-function drawInstructions() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+  // Semi-transparent background
+  ctx.fillStyle = "rgba(255, 255, 255, 1)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Set the font and alignment for the instruction text
-  ctx.font = "24px Arial";
-  ctx.fillStyle = "gray";
+  // Text styling
   ctx.textAlign = "center";
-  // ctx.textBaseline = "middle";
+  ctx.fillStyle = "white";
 
-  // Set maximum width for each line and line height
-  const maxWidth = canvas.width * 0.9; // 80% of the canvas width
-  const lineHeight = 38; // Adjust the space between lines
+  const maxWidth = canvas.width * 0.9;
+  const lineHeight = 38;
+  const yStart = canvas.height / 4 - (lineHeight * 4);
 
-  // Instruction text with manual line breaks
-  const text = "DragON Canvas \n\nDrag images directly onto the canvas. \nOr use button (top left) to load them.\nHighlight file names and press open. \nYou can load multiple images at once. \n\nResize images using the red borders. \nDrag and position images. \n\nPage reload removes all images. \nNo data is shared or stored. \n\nIf you like this app you can support us \nby playing: Matthew via Music on Spotify.";
+  drawStyledText(ctx, instructions, canvas.width / 2, yStart, maxWidth, lineHeight);
 
-  // Calculate the starting y position to center the text block vertically
-  const y = canvas.height / 3 - (lineHeight * 3);
-
-  // Draw the wrapped text with line breaks
-  wrapText(ctx, text, canvas.width / 2, y, maxWidth, lineHeight);
+  ctx.restore();
 }
+
+
+
+
+
+
+
+
+
 
 
 function updateCanvasOffset() {
@@ -114,259 +251,470 @@ function updateCanvasOffset() {
   offsetY = rect.top;
 }
 
-function draw(withBorders) {
+
+
+
+
+
+function draw(withBorders = false) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (images.length === 0) {
-    drawInstructions(); // Draw the instructions if no images are loaded
-    return; // Exit the function since there's nothing else to draw
+    drawHelpOverlay();
+    helpTip.classList.add('hidden');
+    return;
   }
-  
+
+  helpTip.classList.remove('hidden');
+
   images.forEach((imgObj, index) => {
-    ctx.drawImage(imgObj.img, 0, 0, imgObj.img.width, imgObj.img.height, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
+    imgObj.right = imgObj.x + imgObj.width;
+    imgObj.bottom = imgObj.y + imgObj.height;
+    if (imgObj.rotation === undefined) imgObj.rotation = 0;
 
-    if (withBorders && activeImage === index) {
-      drawDeleteButton(imgObj.right + 30, imgObj.y - 30, 'rgba(255, 0, 0, 1)'); // Top-right (Delete button)
+    const cx = imgObj.x + imgObj.width / 2;
+    const cy = imgObj.y + imgObj.height / 2;
 
-      // Draw the red outline first
-      ctx.lineWidth = 24; // Set the outline width slightly larger than the white border
-      ctx.strokeStyle = 'white'; // Set the outline color to red
-      
-      ctx.beginPath();
-      ctx.moveTo(imgObj.x - 12, imgObj.y - 12); // Offset by 12px for outline width
-      ctx.lineTo(imgObj.right + 12, imgObj.y - 12); // Offset by 12px for outline width
-      ctx.lineTo(imgObj.right + 12, imgObj.bottom + 12); // Offset by 12px for outline width
-      ctx.lineTo(imgObj.x - 12, imgObj.bottom + 12); // Offset by 12px for outline width
-      ctx.closePath();
-      ctx.stroke();
-
-      // Draw the white border on top of the red outline
-      ctx.lineWidth = 20; // Set the border width to 20px
-      ctx.strokeStyle = 'red'; // Set the border color to white
-      
-      ctx.beginPath();
-      ctx.moveTo(imgObj.x - 10, imgObj.y - 10); // Offset by 10px for border width
-      ctx.lineTo(imgObj.right + 10, imgObj.y - 10); // Offset by 10px for border width
-      ctx.lineTo(imgObj.right + 10, imgObj.bottom + 10); // Offset by 10px for border width
-      ctx.lineTo(imgObj.x - 10, imgObj.bottom + 10); // Offset by 10px for border width
-      ctx.closePath();
-      ctx.stroke();
-    }
-
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((imgObj.rotation || 0) * Math.PI / 180);
+    ctx.drawImage(
+      imgObj.img, 0, 0, imgObj.img.width, imgObj.img.height,
+      -imgObj.width / 2, -imgObj.height / 2, imgObj.width, imgObj.height
+    );
+    ctx.restore();
   });
+
+  if (withBorders) {
+    // Draw green dots for all selected images except lastSelectedForDot first
+    selectedImages.forEach(imgObj => {
+      if (imgObj === lastSelectedForDot) return; // skip last one here
+
+      const cx = imgObj.x + imgObj.width / 2;
+      const cy = imgObj.y + imgObj.height / 2;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((imgObj.rotation || 0) * Math.PI / 180);
+
+      const cornerX = imgObj.width / 2;
+      const cornerY = imgObj.height / 2;
+      const cornerRadius = 6;
+
+      ctx.beginPath();
+      ctx.arc(cornerX, cornerY, cornerRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = 'green';
+      ctx.fill();
+
+      ctx.restore();
+    });
+
+    // Now draw the green dot for lastSelectedForDot on top if any
+    if (lastSelectedForDot && selectedImages.includes(lastSelectedForDot)) {
+      const cx = lastSelectedForDot.x + lastSelectedForDot.width / 2;
+      const cy = lastSelectedForDot.y + lastSelectedForDot.height / 2;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((lastSelectedForDot.rotation || 0) * Math.PI / 180);
+
+      const cornerX = lastSelectedForDot.width / 2;
+      const cornerY = lastSelectedForDot.height / 2;
+      const cornerRadius = 6;
+
+      ctx.beginPath();
+      ctx.arc(cornerX, cornerY, cornerRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = 'green';
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  if (showHelp) {
+    drawHelpOverlay(); // overlays instructions on top
+  }
 }
 
 
 
 
-function drawDeleteButton(x, y, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x - 10, y - 10, 20, 20); // Draw a red square button
 
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x - 7, y - 7);
-  ctx.lineTo(x + 7, y + 7);
-  ctx.moveTo(x + 7, y - 7);
-  ctx.lineTo(x - 7, y + 7);
-  ctx.stroke(); // Draw an "X" inside the button
+
+function toLocalCoordinates(x, y, imgObj) {
+  const cx = imgObj.x + imgObj.width / 2;
+  const cy = imgObj.y + imgObj.height / 2;
+  const dx = x - cx;
+  const dy = y - cy;
+  const angle = -imgObj.rotation * Math.PI / 180;
+
+  const localX = dx * Math.cos(angle) - dy * Math.sin(angle) + imgObj.width / 2;
+  const localY = dx * Math.sin(angle) + dy * Math.cos(angle) + imgObj.height / 2;
+
+  return { localX, localY };
 }
 
 function anchorHitTest(x, y) {
+  const cornerSize = 10;
+
   for (let i = 0; i < images.length; i++) {
-    let imgObj = images[i];
-    let dx, dy;
+    const imgObj = images[i];
+    const { localX, localY } = toLocalCoordinates(x, y, imgObj);
+    const brCorner = { x: imgObj.width, y: imgObj.height };
 
-    // Check for delete button hit test
-    dx = x - (imgObj.right + 30); // Adjust for 20px border and 10px extra offset
-    dy = y - (imgObj.y - 30);     // Adjust for 20px border and 10px extra offset
-    if (dx * dx + dy * dy <= 100) return { index: i, anchor: 4 };
-
-    // Adjust for border width (20px)
-    dx = x - (imgObj.x - 10);
-    dy = y - (imgObj.y - 10);
-    if (dx * dx + dy * dy <= 64) return { index: i, anchor: 0 };
-
-    dx = x - (imgObj.right + 10);
-    dy = y - (imgObj.y - 10);
-    if (dx * dx + dy * dy <= 64) return { index: i, anchor: 1 };
-
-    dx = x - (imgObj.right + 10);
-    dy = y - (imgObj.bottom + 10);
-    if (dx * dx + dy * dy <= 64) return { index: i, anchor: 2 };
-
-    dx = x - (imgObj.x - 10);
-    dy = y - (imgObj.bottom + 10);
-    if (dx * dx + dy * dy <= 64) return { index: i, anchor: 3 };
+    if (
+      Math.abs(localX - brCorner.x) <= cornerSize &&
+      Math.abs(localY - brCorner.y) <= cornerSize
+    ) {
+      return { index: i, anchor: 2 }; // bottom-right
+    }
   }
 
   return { index: -1, anchor: -1 };
 }
 
+
+
 function hitImage(x, y) {
-  for (let i = images.length - 1; i >= 0; i--) { // Reverse loop to prioritize topmost image
+  for (let i = images.length - 1; i >= 0; i--) {
     let imgObj = images[i];
-    if (x > imgObj.x && x < imgObj.right && y > imgObj.y && y < imgObj.bottom) {
+
+    // Convert to local coords relative to the rotated image
+    const { localX, localY } = toLocalCoordinates(x, y, imgObj);
+
+    // Check if inside unrotated image bounds
+    if (localX >= 0 && localX <= imgObj.width && localY >= 0 && localY <= imgObj.height) {
       return i;
     }
   }
   return -1;
 }
 
+
+
+
+
+
 function handleMouseDown(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
   startX = e.clientX - offsetX;
   startY = e.clientY - offsetY;
 
-  let hitTestResult = anchorHitTest(startX, startY);
+  const hitTestResult = anchorHitTest(startX, startY);
   draggingResizer = hitTestResult.anchor;
 
-  if (draggingResizer === 4) {
-    // Handle deletion of the image if the delete button is clicked
-    if (hitTestResult.index !== -1) {
-      images.splice(hitTestResult.index, 1); // Remove the image from the array
-      draggingResizer = -1;
+  let imgIndex = hitTestResult.index !== -1 ? hitTestResult.index : hitImage(startX, startY);
+  const imgObj = imgIndex !== -1 ? images[imgIndex] : null;
+
+  if (imgObj) {
+    
+    if (dragAll) {
+      selectedImages = [...images];
+      lastSelectedForDot = selectedImages[selectedImages.length - 1];
+      isDragging = true;
       draggingImage = -1;
-      activeImage = -1;
-      draw(false); // Redraw the canvas without the deleted image
+      readyToDrag = true;
+
+      activeImage = images.indexOf(lastSelectedForDot);
     }
-  } else {
-    // Set the active image based on hit test
-    if (hitTestResult.index !== -1) {
-      draggingImage = hitTestResult.index;
-      activeImage = draggingImage;
 
-      // Bring the clicked image to the front
-      let imgObj = images.splice(draggingImage, 1)[0];
-      images.push(imgObj);
+    if (shiftHeld) {
+      // Toggle selection
+      const selectedIdx = selectedImages.indexOf(imgObj);
+      if (selectedIdx === -1) {
+        selectedImages.push(imgObj);
+      } else {
+        selectedImages.splice(selectedIdx, 1);
+      }
 
-      // Update activeImage to the new index of the moved image (last in array)
-      activeImage = images.length - 1;
+      activeImage = selectedImages.length > 0 ? images.indexOf(selectedImages[selectedImages.length - 1]) : -1;
+
+      activeImage = selectedImages.length > 0 ? images.indexOf(selectedImages[0]) : -1;
+      draggingImage = selectedImages.length > 1 ? -1 : images.indexOf(selectedImages[0]);
+      readyToDrag = false;
+      isDragging = false;
+
+      // Update dot tracking
+      if (selectedImages.includes(imgObj)) {
+        lastSelectedForDot = imgObj;
+      } else if (lastSelectedForDot === imgObj) {
+        lastSelectedForDot = selectedImages.length > 0
+          ? selectedImages[selectedImages.length - 1]
+          : null;
+      }
+
     } else {
-      // If no image is clicked, deselect any active image
-      draggingImage = hitImage(startX, startY);
-      if (draggingImage !== -1) {
-        activeImage = draggingImage;
+      if (selectedImages.includes(imgObj)) {
+        // Clicked a selected image
+        readyToDrag = true;
+        isDragging = false;
+        draggingImage = selectedImages.length > 1 ? -1 : images.indexOf(imgObj);
+      } else {
+        // New single selection
+        selectedImages = [imgObj];
+        lastSelectedForDot = imgObj;
 
-        // Bring the clicked image to the front
-        let imgObj = images.splice(draggingImage, 1)[0];
+        // Bring to front
+        images.splice(imgIndex, 1);
         images.push(imgObj);
 
-        // Update activeImage to the new index of the moved image (last in array)
         activeImage = images.length - 1;
-      } else {
-        activeImage = -1; // Deselect any active image if the canvas or an empty area is clicked
+        draggingImage = activeImage;
+        readyToDrag = true;
+        isDragging = false;
       }
     }
-    draw(true); // Redraw the canvas with the new active image at the front
+
+  } else {
+    // Clicked on empty space – clear all
+    selectedImages = [];
+    activeImage = -1;
+    draggingImage = -1;
+    readyToDrag = false;
+    isDragging = false;
+    lastSelectedForDot = null;
   }
+
+  if (draggingResizer > -1) {
+    activeImage = hitTestResult.index;
+  }
+
+  prevX = startX;
+  prevY = startY;
+
+  draw(true);
 }
 
 
 
-function handleMouseUp() {
-  if (activeImage > -1) {
-    let imgObj = images[activeImage];
-    imgObj.right = imgObj.x + imgObj.width;
-    imgObj.bottom = imgObj.y + imgObj.height;
-    draw(true); // Redraw the canvas after releasing the image
-  }
 
-  draggingResizer = -1;
-  draggingImage = -1;
-  activeImage = -1;
-}
+
+
+
+
 
 
 function handleMouseMove(e) {
-  if (activeImage > -1) {
-    let imgObj = images[activeImage];
-    let mouseX = e.clientX - offsetX;
-    let mouseY = e.clientY - offsetY;
+  e.preventDefault();
+  e.stopPropagation();
 
-    if (draggingResizer > -1) {
-      // Handle resizing logic only for the active image
-      let aspectRatio = imgObj.img.width / imgObj.img.height;
+  const now = Date.now();
+  if (now - lastResizeTime < resizeThrottle) return;
+  lastResizeTime = now;
 
-      switch (draggingResizer) {
-        case 0:
-          // Resize from top-left corner
-          let newWidthTL = imgObj.right - mouseX;
-          let newHeightTL = imgObj.bottom - mouseY;
-          imgObj.width = newWidthTL;
-          imgObj.height = newHeightTL;
-          if (imgObj.width / imgObj.height > aspectRatio) {
-            imgObj.width = imgObj.height * aspectRatio;
-          } else {
-            imgObj.height = imgObj.width / aspectRatio;
-          }
-          imgObj.x = mouseX;
-          imgObj.y = mouseY;
-          break;
-        case 1:
-          // Resize from top-right corner
-          imgObj.width = mouseX - imgObj.x;
-          imgObj.height = imgObj.bottom - mouseY;
-          if (imgObj.width / imgObj.height > aspectRatio) {
-            imgObj.width = imgObj.height * aspectRatio;
-          } else {
-            imgObj.height = imgObj.width / aspectRatio;
-          }
-          imgObj.y = mouseY;
-          break;
-        case 2:
-          // Resize from bottom-right corner
-          imgObj.width = mouseX - imgObj.x;
-          imgObj.height = mouseY - imgObj.y;
-          if (imgObj.width / imgObj.height > aspectRatio) {
-            imgObj.width = imgObj.height * aspectRatio;
-          } else {
-            imgObj.height = imgObj.width / aspectRatio;
-          }
-          break;
-        case 3:
-          // Resize from bottom-left corner
-          let newWidthBL = imgObj.right - mouseX;
-          let newHeightBL = mouseY - imgObj.y;
-          imgObj.width = newWidthBL;
-          imgObj.height = newHeightBL;
-          if (imgObj.width / imgObj.height > aspectRatio) {
-            imgObj.width = imgObj.height * aspectRatio;
-          } else {
-            imgObj.height = imgObj.width / aspectRatio;
-          }
-          imgObj.x = mouseX;
-          break;
+  if (!readyToDrag) return;  // Just check readyToDrag only
+
+  const mouseX = e.clientX - offsetX;
+  const mouseY = e.clientY - offsetY;
+
+  // Force start dragging immediately if dragAll is true
+  if (dragAll && !isDragging) {
+    isDragging = true;
+  } else {
+    const moveThreshold = 3;
+    if (!isDragging) {
+      if (Math.abs(mouseX - startX) <= moveThreshold && Math.abs(mouseY - startY) <= moveThreshold) {
+        return; // don't drag yet
       }
+      isDragging = true;
+    }
+  }
 
-      // Ensure dimensions are at least 25x25
-      if (imgObj.width < 25) imgObj.width = 25;
-      if (imgObj.height < 25) imgObj.height = 25;
+  // Resize only if activeImage is valid and resizer is active
+if (draggingResizer === 2 && activeImage !== -1) {
+  const imgObj = images[activeImage];
+  const aspectRatio = imgObj.img.width / imgObj.img.height;
+  const { localX: lx, localY: ly } = toLocalCoordinates(mouseX, mouseY, imgObj);
 
-      imgObj.right = imgObj.x + imgObj.width;
-      imgObj.bottom = imgObj.y + imgObj.height;
+  let newWidth = lx;
+  let newHeight = ly;
 
-      draw(true);
+  if (newWidth / newHeight > aspectRatio) {
+    newWidth = newHeight * aspectRatio;
+  } else {
+    newHeight = newWidth / aspectRatio;
+  }
 
-    } else {
-      // Handle dragging logic only for the active image
-      let dx = mouseX - startX;
-      let dy = mouseY - startY;
+  const MIN_IMAGE_SIZE = 25;
+  newWidth = Math.max(MIN_IMAGE_SIZE, newWidth);
+  newHeight = Math.max(MIN_IMAGE_SIZE, newHeight);
+
+
+  const scaleX = newWidth / imgObj.width;
+  const scaleY = newHeight / imgObj.height;
+
+  const toResize = selectedImages.length > 1 ? selectedImages : [imgObj];
+
+  for (const target of toResize) {
+    const cx = target.x + target.width / 2;
+    const cy = target.y + target.height / 2;
+
+    target.width = Math.max(MIN_IMAGE_SIZE, target.width * scaleX);
+    target.height = Math.max(MIN_IMAGE_SIZE, target.height * scaleY);
+
+    // Re-center
+    target.x = cx - target.width / 2;
+    target.y = cy - target.height / 2;
+  }
+
+  draw(true);
+  return;
+}
+
+
+  if (isDragging) {
+    const dx = mouseX - prevX;
+    const dy = mouseY - prevY;
+
+    if (draggingImage === -1 && selectedImages.length > 1) {
+      for (const imgObj of selectedImages) {
+        imgObj.x += dx;
+        imgObj.y += dy;
+      }
+    } else if (draggingImage > -1) {
+      const imgObj = images[draggingImage];
       imgObj.x += dx;
       imgObj.y += dy;
-      imgObj.right += dx;
-      imgObj.bottom += dy;
-      startX = mouseX;
-      startY = mouseY;
-
-      draw(true);
     }
+
+    prevX = mouseX;
+    prevY = mouseY;
+
+    draw(true);
   }
 }
 
 
-// Load images and resize to fit within 300px height, scattered randomly
+
+
+
+
+
+
+
+function handleMouseUp(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  draggingResizer = -1;
+  draggingImage = -1;
+  readyToDrag = false;
+  isDragging = false;
+
+  draw(true);
+}
+
+
+
+
+
+window.addEventListener('keydown', function(e) {
+
+  if (e.key === 'Shift') {
+    shiftHeld = true;
+  }
+
+  
+// show help instructions
+if (e.key.toLowerCase() === 'h') {
+    showHelp = !showHelp;
+    draw(true);
+  }
+
+
+
+  // group drag
+    if (e.key.toLowerCase() === 'g') {
+      dragAll = true;
+    }
+
+
+
+
+  // 
+  // 
+  if (activeImage === -1) return;
+  // ^^^ only allow key shortcuts whilst an image is active
+
+
+ let rotated = false;
+
+  if (e.key === 'ArrowDown') {
+    selectedImages.forEach(imgObj => {
+      imgObj.rotation = ((imgObj.rotation || 0) - 1) % 360;
+    });
+    rotated = true;
+  } else if (e.key === 'ArrowUp') {
+    selectedImages.forEach(imgObj => {
+      imgObj.rotation = ((imgObj.rotation || 0) + 1) % 360;
+    });
+    rotated = true;
+  }
+
+  if (rotated) {
+    draw(true);
+    e.preventDefault();
+  }
+
+
+
+
+
+
+// delete image with backspace/delete key
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    console.log(1);
+    const confirmDelete = confirm('Delete selected image(s)?');
+    if (confirmDelete) {
+      // Sort descending to delete from back
+      selectedImages.forEach(imgObj => {
+        const i = images.indexOf(imgObj);
+        if (i !== -1) {
+          images.splice(i, 1);
+        }
+      });
+      selectedImages = [];
+      activeImage = -1;
+      draggingImage = -1;
+      draggingResizer = -1;
+      draw(true);
+    }
+  }
+
+// 
+// 
+});
+
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') {
+      shiftHeld = false;
+    }
+
+    if (e.key.toLowerCase() === 'g') {
+      dragAll = false;
+    }
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Load images and resize to fit within maxHeight, scattered randomly
 document.getElementById('imageLoader').addEventListener('change', function (e) {
+
+  showHelp = false;
   Array.from(e.target.files).forEach(file => {
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -374,8 +722,7 @@ document.getElementById('imageLoader').addEventListener('change', function (e) {
       reader.onload = function (event) {
         const img = new Image();
         img.onload = function () {
-          // Limit image height to 300px while maintaining aspect ratio
-          const maxHeight = 300;
+          // Limit image to maxHeight while maintaining aspect ratio
           let width, height;
           let aspectRatio = img.width / img.height;
 
@@ -387,12 +734,14 @@ document.getElementById('imageLoader').addEventListener('change', function (e) {
             width = img.width;
           }
 
+          img.draggable = false;
+
           // Calculate the initial center position
           let centerX = canvas.width / 2 - width / 2;
           let centerY = canvas.height / 2 - height / 2;
 
           // Define a minimum distance between images to prevent overlap
-          const minDistance = 50;
+          const minDistance = 100;
           let overlap = true;
 
           // Adjust position to ensure no overlap and within canvas bounds
@@ -427,7 +776,8 @@ document.getElementById('imageLoader').addEventListener('change', function (e) {
             width: width,
             height: height,
             right: centerX + width,
-            bottom: centerY + height
+            bottom: centerY + height,
+            rotation: 0,
           };
           images.push(imgObj);
           draw(false);
@@ -447,6 +797,8 @@ function handleImageDrop(e) {
   e.preventDefault();
   e.stopPropagation();
 
+  showHelp = false;
+
   const dt = e.dataTransfer;
   const files = dt.files;
 
@@ -457,8 +809,7 @@ function handleImageDrop(e) {
       reader.onload = function(evt) {
         const img = new Image();
         img.onload = function() {
-          // Limit image height to 300px while maintaining aspect ratio
-          const maxHeight = 300;
+          // Limit image maxHeight while maintaining aspect ratio
           let newWidth, newHeight;
 
           if (img.height > maxHeight) {
@@ -469,12 +820,14 @@ function handleImageDrop(e) {
             newWidth = img.width;
           }
 
+          img.draggable = false;
+
           // Calculate the initial center position
           let centerX = canvas.width / 2 - newWidth / 2;
           let centerY = canvas.height / 2 - newHeight / 2;
 
           // Define a minimum distance between images to prevent overlap
-          const minDistance = 50;
+          const minDistance = 100;
           let overlap = true;
 
           // Adjust position to ensure no overlap and within canvas bounds
@@ -508,7 +861,8 @@ function handleImageDrop(e) {
             width: newWidth,
             height: newHeight,
             right: centerX + newWidth,
-            bottom: centerY + newHeight
+            bottom: centerY + newHeight,
+            rotation: 0,
           };
           images.push(imgObj);
           draw(false);
@@ -531,13 +885,25 @@ canvas.addEventListener("mouseup", handleMouseUp);
 canvas.addEventListener("mouseout", handleMouseUp);
 
 
-//*  */ 
+
 canvas.addEventListener("dragover", function(e) {
   e.preventDefault();
   e.stopPropagation();
 });
 canvas.addEventListener("drop", handleImageDrop);
+
 ///*  */
+
+
+
+document.getElementById('clearCanvas').addEventListener('click', function () {
+  const confirmation = confirm("Are you sure you wish to clear all images?");
+  if (confirmation) {
+    images.length = 0;
+    draw(false); // Redraw canvas without images
+  }
+});
+
 
 
 window.addEventListener("resize", () => {
@@ -549,3 +915,40 @@ window.addEventListener("resize", () => {
 
 // Initialize canvas size
 window.dispatchEvent(new Event('resize'));
+
+
+
+// Function to generate a random name
+function generateRandomName() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let randomName = '';
+  for (let i = 0; i < 10; i++) { // Generate a 10 character random string
+    randomName += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return randomName;
+}
+
+
+// Set up the download button to capture the canvas and trigger a download
+downloadBtn.addEventListener('click', () => {
+  // Temporarily redraw without green dot resize guide
+  draw(false);
+
+  // Convert canvas to image
+  domtoimage.toBlob(canvas)
+    .then((blob) => {
+      // Generate random filename
+      const link = document.createElement('a');
+      const randomName = generateRandomName();
+      link.href = URL.createObjectURL(blob);
+      link.download = `${randomName}-image.png`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      // Optionally restore borders for UI
+      draw(true);
+    })
+    .catch((error) => {
+      console.error('Error generating image:', error);
+    });
+});
