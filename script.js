@@ -5,7 +5,7 @@ document.body.style.userSelect = 'none'; // disables text selection
 canvas.style.userSelect = 'none';        // more specific
 canvas.style.webkitUserDrag = 'none';    // prevents image dragging on Safari/Chrome
 
-let maxHeight = 500;
+let maxHeight = 200;
 let showHelp = false;
 let selectedImages = []; // array of selected image indices
 let shiftHeld = false;
